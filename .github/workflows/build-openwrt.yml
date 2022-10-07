@@ -102,7 +102,7 @@ jobs:
     - name: Compile the firmware
       id: compile
       run: |
-        #cp -p ykreboot.patch openwrt/target/linux/ramips/patches-4.14/
+        cp -p ykreboot.patch openwrt/target/linux/ramips/patches-5.4/
         cd openwrt
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
