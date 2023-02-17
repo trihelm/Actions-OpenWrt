@@ -178,3 +178,19 @@
 		reg = <0xe006 0x6>;
 	};
 };
+
+&usb2_phy {
+        status = "okay";
+};
+
+&usb2 {
+        status = "okay";
+};
+
+&ehci {
+        status = "okay";
+};
+
+&ohci {
+        status = "okay";
+};
