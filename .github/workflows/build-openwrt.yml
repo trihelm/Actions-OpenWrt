@@ -66,6 +66,7 @@ jobs:
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         mv mt7621_nokia-sbell_a040wq.dts openwrt/target/linux/ramips/dts/
+        mv -f config-5.4 openwrt/target/linux/ramips/mt7621/config-5.4
         mv -f mt7621.mk openwrt/target/linux/ramips/image/mt7621.mk
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
