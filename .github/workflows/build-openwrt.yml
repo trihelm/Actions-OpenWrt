@@ -69,6 +69,7 @@ jobs:
         mv mt7621_nokia-sbell_a040wq.dts openwrt/target/linux/ramips/dts/
         mv -f config-5.4 openwrt/target/linux/ramips/mt7621/config-5.4
         mv -f mt7621.mk openwrt/target/linux/ramips/image/mt7621.mk
+        mv small.zip openwrt/
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
         
@@ -80,6 +81,10 @@ jobs:
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
+        rm -rf feeds/small/luci-app-passwall
+        zip small.zip
+        cp small*/luci-app-passwall /feeds/small/
+        
 
     - name: Load custom configuration
       run: |
