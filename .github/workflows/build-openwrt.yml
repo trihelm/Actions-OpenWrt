@@ -105,9 +105,10 @@ jobs:
         make defconfig
         make download -j8
         rm -rf feeds/small/luci-app-passwall
+        rm -rf feeds/small/simple-obfs
         unzip small.zip
         mv -f small*/luci-app-passwall feeds/small/
-        echo feeds/small/luci-app-passwall/Makefile
+        mv -f small*/simple-obfs feeds/small/
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
