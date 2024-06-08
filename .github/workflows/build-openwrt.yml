@@ -91,7 +91,7 @@ jobs:
         cd openwrt
         rm -rf feeds/small/luci-app-passwall
         unzip small.zip
-        mv -f small*/luci-app-passwall /feeds/small/
+        mv -f small*/luci-app-passwall feeds/small/
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
     - name: SSH connection to Actions
