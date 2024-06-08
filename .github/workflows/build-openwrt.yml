@@ -107,6 +107,7 @@ jobs:
         rm -rf feeds/small/luci-app-passwall
         unzip small.zip
         mv -f small*/luci-app-passwall feeds/small/
+        echo feeds/small/luci-app-passwall/Makefile
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
