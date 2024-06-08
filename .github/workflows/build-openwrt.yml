@@ -90,7 +90,7 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         rm -rf feeds/small/luci-app-passwall
-        zip small.zip
+        unzip small.zip
         mv -f small*/luci-app-passwall /feeds/small/
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
