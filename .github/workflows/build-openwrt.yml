@@ -23,7 +23,7 @@ env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: .config
+  CONFIG_FILE: 8820.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
@@ -66,16 +66,10 @@ jobs:
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
-        mv mt7621_nokia-sbell_a040wq.dts openwrt/target/linux/ramips/dts/
-        mv -f config-5.4 openwrt/target/linux/ramips/mt7621/config-5.4
-        mv -f mt7621.mk openwrt/target/linux/ramips/image/mt7621.mk
-        mv -f small.zip openwrt/
+        mv -f luci-app-passwall.zip openwrt/
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
         
-        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
-        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
-
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
 
@@ -103,10 +97,8 @@ jobs:
       run: |
         cd openwrt
         rm -rf feeds/small/luci-app-passwall
-        #rm -rf feeds/small/simple-obfs
-        unzip small.zip
-        mv -f small*/luci-app-passwall feeds/small/
-        #mv -f small*/simple-obfs feeds/small/
+        unzip luci-app-passwall.zip
+        mv -f luci-app-passwall feeds/small/
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
