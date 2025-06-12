@@ -67,8 +67,8 @@ jobs:
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         mv -f luci-app-passwall.zip openwrt/
-        #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
-        #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
+        rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
+        mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
         
