@@ -70,8 +70,6 @@ jobs:
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cd openwrt
-        git clone https://github.com/shadowsocks/openwrt-feeds.git package/feeds
-        git clone https://github.com/shadowsocks/openwrt-shadowsocks.git package/shadowsocks-libev
         $GITHUB_WORKSPACE/$DIY_P1_SH
         
     - name: Update feeds
@@ -100,6 +98,8 @@ jobs:
       id: package
       run: |
         cd openwrt
+        git clone https://github.com/shadowsocks/openwrt-feeds.git package/feeds
+        git clone https://github.com/shadowsocks/openwrt-shadowsocks.git package/shadowsocks-libev
         rm -rf feeds/small/luci-app-passwall
         unzip luci-app-passwall.zip
         mv -f luci-app-passwall feeds/small/
