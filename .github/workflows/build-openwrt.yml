@@ -70,6 +70,8 @@ jobs:
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cd openwrt
+        git clone https://github.com/shadowsocks/openwrt-feeds.git package/feeds
+        git clone https://github.com/shadowsocks/openwrt-shadowsocks.git package/shadowsocks-libev
         $GITHUB_WORKSPACE/$DIY_P1_SH
         
     - name: Update feeds
