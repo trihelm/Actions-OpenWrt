@@ -66,14 +66,16 @@ jobs:
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
-        mv -f luci-app-passwall.zip openwrt/
+        mv -f small.zip openwrt/
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+        #$GITHUB_WORKSPACE/$DIY_P1_SH
         
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+        cd openwrt && ./scripts/feeds update -a
+        
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
@@ -101,8 +103,8 @@ jobs:
         rm -rf feeds/small/luci-app-bypass
         rm -rf feeds/small/luci-app-ssr-plus
         rm -rf feeds/small/luci-app-passwall
-        unzip luci-app-passwall.zip
-        mv -f luci-app-passwall feeds/small/
+        #unzip luci-app-passwall.zip
+        #mv -f luci-app-passwall feeds/small/
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
