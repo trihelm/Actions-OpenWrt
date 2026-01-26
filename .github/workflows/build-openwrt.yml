@@ -75,8 +75,10 @@ jobs:
     - name: Update feeds
       run: |
         cd openwrt && ./scripts/feeds update -a
+        unzip small.zip
+        mv small feeds/packages/
+        rm -rf feeds/packages/net/xray-core
         
-
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
        
