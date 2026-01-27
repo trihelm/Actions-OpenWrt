@@ -102,8 +102,8 @@ jobs:
       id: package
       run: |
         cd openwrt
-        rm -rf feeds/small/luci-app-bypass
-        rm -rf feeds/small/luci-app-ssr-plus
+        #rm -rf feeds/small/luci-app-bypass
+        #rm -rf feeds/small/luci-app-ssr-plus
         #rm -rf feeds/small/luci-app-passwall
         #unzip luci-app-passwall.zip
         #mv -f luci-app-passwall feeds/small/
