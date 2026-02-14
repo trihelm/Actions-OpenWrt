@@ -73,7 +73,7 @@ jobs:
         #$GITHUB_WORKSPACE/$DIY_P1_SH
         mkdir feeds
         mkdir feeds/packages
-        git clone https://github.com/sirpdboy/luci-app-ddns-go ddnsgo
+        git clone https://github.com/sirpdboy/luci-app-ddns-go feeds/packages/ddnsgo
         
 
     - name: Update feeds
