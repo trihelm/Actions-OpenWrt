@@ -71,14 +71,14 @@ jobs:
         #mv -f config-5.4 openwrt/target/linux/ramips/mt7620/config-5.4
         cd openwrt
         #$GITHUB_WORKSPACE/$DIY_P1_SH
-        mkdir feeds
-        mkdir feeds/packages
-        git clone https://github.com/sirpdboy/luci-app-ddns-go feeds/packages/ddnsgo
+
         
 
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
-
+        git clone https://github.com/sirpdboy/luci-app-ddns-go feeds/packages/ddnsgo
+        ./scripts/feeds update -a
+        
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
