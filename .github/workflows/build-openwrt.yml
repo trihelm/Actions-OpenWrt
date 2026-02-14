@@ -75,7 +75,8 @@ jobs:
         
 
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+        cd openwrt && ./scripts/feeds update -a
         git clone https://github.com/sirpdboy/luci-app-ddns-go feeds/packages/ddnsgo
         ./scripts/feeds update -a
         
