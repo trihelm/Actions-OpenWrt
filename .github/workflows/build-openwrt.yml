@@ -77,7 +77,7 @@ jobs:
         cd openwrt
         ./scripts/feeds update -a
         unzip small.zip
-        mv small feeds/packages/small
+        mv small feeds/small
         ./scripts/feeds update -a
         rm -rf feeds/packages/net/xray-core
         
