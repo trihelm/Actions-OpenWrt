@@ -79,7 +79,7 @@ jobs:
         unzip small.zip
         mv small feeds/small
         ./scripts/feeds update -a
-        #rm -rf feeds/packages/net/xray-core
+        rm -rf feeds/packages/net/xray-core
         
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
