@@ -21,7 +21,7 @@ on:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: openwrt-18.06
+  REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
@@ -79,8 +79,8 @@ jobs:
         cd openwrt && ./scripts/feeds update -a
         git clone https://github.com/sirpdboy/luci-app-ddns-go feeds/packages/ddnsgo
         ./scripts/feeds update -a
-        sed -i 's|uses: sbwml/openwrt-gh-action-sdk@main|uses: sbwml/openwrt-gh-action-sdk@go1.25|' feeds/packages/ddnsgo/.github/workflows/release.yml
-        sed -i 's/PKG_BUILD_FLAGS:=no-mips16/PKG_USE_MIPS16:=0/' feeds/packages/ddnsgo/ddns-go/Makefile
+        #sed -i 's|uses: sbwml/openwrt-gh-action-sdk@main|uses: sbwml/openwrt-gh-action-sdk@go1.25|' feeds/packages/ddnsgo/.github/workflows/release.yml
+        #sed -i 's/PKG_BUILD_FLAGS:=no-mips16/PKG_USE_MIPS16:=0/' feeds/packages/ddnsgo/ddns-go/Makefile
         
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
