@@ -46,6 +46,11 @@ jobs:
       with:
         cmake-version: '3.31'
 
+    - name: Verify CMake
+      run: |
+        which cmake
+        cmake --version
+
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -119,6 +124,11 @@ jobs:
     - name: Compile the firmware
       id: compile
       run: |
+        export PATH=/usr/local/bin:$PATH
+        rm -f /workdir/openwrt/staging_dir/host/bin/cmake || true
+        cd /workdir/openwrt
+        which cmake
+        cmake --version      
         cd openwrt
         echo -e "$(nproc) thread compile"
         #make -j1 V=s
