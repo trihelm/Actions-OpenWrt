@@ -41,6 +41,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
+    - name: Setup CMake 3.31
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.31'
+
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
