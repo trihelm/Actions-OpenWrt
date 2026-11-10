@@ -41,23 +41,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Setup CMake 3.31
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.31'
-
-    - name: Verify CMake
-      run: |
-        which cmake
-        cmake --version
-
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get update
-        sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
@@ -116,46 +106,59 @@ jobs:
         mv -f small*/luci-app-passwall feeds/small/
         #mv -f small*/simple-obfs feeds/small/
         make defconfig
-        # defconfig 之后再次确保使用宿主 CMake
-        grep -q '^CONFIG_USE_HOST_CMAKE=y' .config || echo 'CONFIG_USE_HOST_CMAKE=y' >> .config
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
     - name: Compile the firmware
       id: compile
+      shell: bash
       run: |
         cd openwrt
 
-        echo "=== cmake from action ==="
+        echo "=== cmake used by make ==="
         which cmake
         cmake --version
-
-        echo "=== override staging cmake with action cmake ==="
-        mkdir -p staging_dir/host/bin
-        REAL_CMAKE=$(command -v cmake)
-        REAL_CMAKE=$(readlink -f "$REAL_CMAKE" 2>/dev/null || echo "$REAL_CMAKE")
-        echo "Real cmake: $REAL_CMAKE"
-        "$REAL_CMAKE" --version
-        cp -f "$REAL_CMAKE" staging_dir/host/bin/cmake
-        chmod +x staging_dir/host/bin/cmake
-        staging_dir/host/bin/cmake --version
-
-        echo "=== ensure CONFIG_USE_HOST_CMAKE ==="
-        grep -q '^CONFIG_USE_HOST_CMAKE=y' .config || echo 'CONFIG_USE_HOST_CMAKE=y' >> .config
-        grep '^CONFIG_USE_HOST_CMAKE' .config || true
-
-        echo "=== clean rpcd-mod-luci build cache ==="
-        make package/feeds/luci/rpcd-mod-luci/clean || true
-        rm -rf build_dir/target-*/rpcd-mod-luci-*
-
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
+
+        LOG=/workdir/build.log
+        DETAIL_LOG=/workdir/build-detail.log
+
+        set -o pipefail
+
+        echo "=== make -j$(nproc) (summary log saved to $LOG) ==="
+        make -j$(nproc) 2>&1 | tee "$LOG"
+        RET=${PIPESTATUS[0]}
+
+        if [ "$RET" -ne 0 ]; then
+          echo "=== build failed (exit $RET), last 300 lines of summary log ==="
+          tail -n 300 "$LOG" || true
+
+          echo "=== retry with V=s, detail log saved to $DETAIL_LOG ==="
+          make -j1 V=s 2>&1 | tee "$DETAIL_LOG"
+          RET=${PIPESTATUS[0]}
+
+          if [ "$RET" -ne 0 ]; then
+            echo "=== detail build still failed (exit $RET), last 500 lines ==="
+            tail -n 500 "$DETAIL_LOG" || true
+            exit "$RET"
+          fi
+        fi
 
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@main
+      with:
+        name: build-logs
+        path: |
+          /workdir/build.log
+          /workdir/build-detail.log
+        if-no-files-found: ignore
 
     - name: Check space usage
       if: (!cancelled())
