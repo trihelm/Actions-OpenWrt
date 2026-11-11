@@ -129,18 +129,33 @@ jobs:
           echo "WARNING: $LUCI_C not found"
         fi
 
-        # --- Patch liburcu: disable mips16 to support 'sync' opcode ---
+        # --- Patch liburcu: force disable mips16 to support 'sync' opcode ---
         LIBURCU_MK=feeds/packages/libs/liburcu/Makefile
         if [ -f "$LIBURCU_MK" ]; then
           echo "=== before patch $LIBURCU_MK ==="
-          grep -n 'PKG_BUILD_FLAGS' "$LIBURCU_MK" || true
-          if ! grep -q 'PKG_BUILD_FLAGS' "$LIBURCU_MK"; then
+          grep -nE 'PKG_BUILD_FLAGS|PKG_USE_MIPS16|TARGET_CFLAGS' "$LIBURCU_MK" || true
+
+          # 1. 追加/写入 PKG_BUILD_FLAGS:=no-mips16
+          if grep -q '^PKG_BUILD_FLAGS' "$LIBURCU_MK"; then
+            if ! grep -q 'no-mips16' "$LIBURCU_MK"; then
+              sed -i '/^PKG_BUILD_FLAGS/s/$/ no-mips16/' "$LIBURCU_MK"
+            fi
+          else
             sed -i '/^PKG_BUILD_PARALLEL/i\PKG_BUILD_FLAGS:=no-mips16' "$LIBURCU_MK"
-          elif ! grep -q 'no-mips16' "$LIBURCU_MK"; then
-            sed -i 's/^PKG_BUILD_FLAGS:=.*/& no-mips16/' "$LIBURCU_MK"
           fi
+
+          # 2. 兼容旧版写法 PKG_USE_MIPS16:=0
+          if ! grep -q 'PKG_USE_MIPS16' "$LIBURCU_MK"; then
+            sed -i '/^PKG_BUILD_PARALLEL/i\PKG_USE_MIPS16:=0' "$LIBURCU_MK"
+          fi
+
+          # 3. 直接在 TARGET_CFLAGS 里加 -mno-mips16，覆盖前面的 -mips16
+          if ! grep -q 'TARGET_CFLAGS += -mno-mips16' "$LIBURCU_MK"; then
+            sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\TARGET_CFLAGS += -mno-mips16' "$LIBURCU_MK"
+          fi
+
           echo "=== after patch $LIBURCU_MK ==="
-          grep -n 'PKG_BUILD_FLAGS' "$LIBURCU_MK" || true
+          grep -nE 'PKG_BUILD_FLAGS|PKG_USE_MIPS16|TARGET_CFLAGS' "$LIBURCU_MK" || true
         else
           echo "WARNING: $LIBURCU_MK not found"
         fi
