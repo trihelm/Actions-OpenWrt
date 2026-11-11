@@ -115,6 +115,19 @@ jobs:
       shell: bash
       run: |
         cd openwrt
+
+        LUCI_C=feeds/luci/libs/rpcd-mod-luci/src/luci.c
+        if [ -f "$LUCI_C" ] && grep -q 'IWINFO_80211_COUNT' "$LUCI_C"; then
+           echo "=== patching $LUCI_C ==="
+           sed -i 's/IWINFO_80211_COUNT/(sizeof(iw_80211names)\/sizeof(iw_80211names[0]))/g' "$LUCI_C"
+           grep -n 'sizeof(iw_80211names)' "$LUCI_C" || true
+        fi
+
+        echo "=== clean rpcd-mod-luci ==="
+        make package/feeds/luci/rpcd-mod-luci/clean || true
+        rm -rf build_dir/target-*/rpcd-mod-luci-*
+        
+        #cd openwrt
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
