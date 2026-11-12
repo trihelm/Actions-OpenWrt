@@ -81,6 +81,16 @@ jobs:
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
+    - name: Remove packages xray-core
+      run: |
+        cd openwrt
+        echo "=== before remove ==="
+        find feeds package -maxdepth 4 -type d -name 'xray*' 2>/dev/null || true
+        rm -rf package/feeds/packages/xray-core
+        rm -rf feeds/packages/net/xray-core
+        echo "=== after remove ==="
+        find feeds package -maxdepth 4 -type d -name 'xray*' 2>/dev/null || true
+
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files || true
@@ -116,7 +126,6 @@ jobs:
       run: |
         cd openwrt
 
-        # --- Patch rpcd-mod-luci: IWINFO_80211_COUNT -> IWINFO_80211_N ---
         LUCI_C=feeds/luci/libs/rpcd-mod-luci/src/luci.c
         if [ -f "$LUCI_C" ]; then
           echo "=== before patch $LUCI_C ==="
@@ -129,7 +138,6 @@ jobs:
           echo "WARNING: $LUCI_C not found"
         fi
 
-        # --- Patch liburcu: force disable mips16 to support 'sync' opcode ---
         LIBURCU_MK=feeds/packages/libs/liburcu/Makefile
         if [ -f "$LIBURCU_MK" ]; then
           echo "=== before patch $LIBURCU_MK ==="
@@ -148,21 +156,37 @@ jobs:
           echo "WARNING: $LIBURCU_MK not found"
         fi
 
-        # --- Patch xray-core: disable CGO to avoid -fuse-ld=lld ---
-        XRAY_MK=feeds/packages/net/xray-core/Makefile
-        if [ -f "$XRAY_MK" ]; then
-          echo "=== patch $XRAY_MK: disable CGO ==="
-          grep -n 'CGO_ENABLED' "$XRAY_MK" || true
-          if ! grep -q '^override CGO_ENABLED' "$XRAY_MK"; then
-            sed -i '/^include \$(TOPDIR)\/rules.mk/a override CGO_ENABLED = 0' "$XRAY_MK"
-          fi
-          echo "=== after patch ==="
-          grep -n 'CGO_ENABLED' "$XRAY_MK" || true
-        else
-          echo "WARNING: $XRAY_MK not found"
-        fi
+        WRAP_DIR=/workdir/gcc-wrapper
+        mkdir -p "$WRAP_DIR"
+        TOOLCHAIN_BIN=/workdir/openwrt/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin
 
-        #cd openwrt
+        for tool in gcc g++; do
+          REAL="$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-$tool"
+          WRAP="$WRAP_DIR/mipsel-openwrt-linux-musl-$tool"
+          if [ -x "$REAL" ]; then
+            {
+              printf '%s\n' '#!/bin/bash'
+              printf '%s\n' "real=\"$REAL\""
+              printf '%s\n' 'args=()'
+              printf '%s\n' 'for arg in "$@"; do'
+              printf '%s\n' '  if [ "$arg" = "-fuse-ld=lld" ]; then'
+              printf '%s\n' '    args+=("-fuse-ld=bfd")'
+              printf '%s\n' '  else'
+              printf '%s\n' '    args+=("$arg")'
+              printf '%s\n' '  fi'
+              printf '%s\n' 'done'
+              printf '%s\n' 'exec "$real" "${args[@]}"'
+            } > "$WRAP"
+            chmod +x "$WRAP"
+            echo "Created wrapper: $WRAP"
+          fi
+        done
+
+        export PATH="$WRAP_DIR:$PATH"
+        echo "PATH head: $(echo $PATH | cut -d: -f1-3)"
+        which mipsel-openwrt-linux-musl-gcc
+        mipsel-openwrt-linux-musl-gcc --version | head -1
+
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
