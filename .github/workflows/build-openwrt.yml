@@ -80,7 +80,6 @@ jobs:
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-        
 
     - name: Load custom configuration
       run: |
@@ -114,6 +113,8 @@ jobs:
       shell: bash
       run: |
         cd openwrt
+
+        # --- rpcd-mod-luci patch: IWINFO_80211_COUNT -> IWINFO_80211_N ---
         LUCI_C=feeds/luci/libs/rpcd-mod-luci/src/luci.c
         if [ -f "$LUCI_C" ]; then
           echo "=== before patch $LUCI_C ==="
@@ -125,6 +126,8 @@ jobs:
         else
           echo "WARNING: $LUCI_C not found"
         fi
+
+        # --- liburcu patch: disable mips16 ---
         LIBURCU_MK=feeds/packages/libs/liburcu/Makefile
         if [ -f "$LIBURCU_MK" ]; then
           echo "=== before patch $LIBURCU_MK ==="
@@ -142,9 +145,28 @@ jobs:
         else
           echo "WARNING: $LIBURCU_MK not found"
         fi
+
+        # --- xray-core patch: disable Cronet + CGO ---
+        XRAY_MK=feeds/packages/net/xray-core/Makefile
+        if [ -f "$XRAY_MK" ]; then
+          echo "=== before patch $XRAY_MK ==="
+          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
+          sed -i 's/with_cronet//g' "$XRAY_MK"
+          sed -i 's/cronet//g' "$XRAY_MK"
+          sed -i '/CGO_ENABLED/d' "$XRAY_MK"
+          printf '\noverride CGO_ENABLED = 0\n' >> "$XRAY_MK"
+          sed -i 's/-fuse-ld=lld//g' "$XRAY_MK"
+          echo "=== after patch $XRAY_MK ==="
+          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
+        else
+          echo "WARNING: $XRAY_MK not found"
+        fi
+
+        # --- gcc wrapper: -fuse-ld=lld -> -fuse-ld=bfd (PATH-based calls) ---
         WRAP_DIR=/workdir/gcc-wrapper
         mkdir -p "$WRAP_DIR"
         TOOLCHAIN_BIN=/workdir/openwrt/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin
+
         for tool in gcc g++; do
           REAL="$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-$tool"
           WRAP="$WRAP_DIR/mipsel-openwrt-linux-musl-$tool"
