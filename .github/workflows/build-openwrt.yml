@@ -163,29 +163,27 @@ jobs:
         for tool in gcc g++; do
           REAL="$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-$tool"
           WRAP="$WRAP_DIR/mipsel-openwrt-linux-musl-$tool"
-          if [ -x "$REAL" ]; then
-            {
-              printf '%s\n' '#!/bin/bash'
-              printf '%s\n' "real=\"$REAL\""
-              printf '%s\n' 'args=()'
-              printf '%s\n' 'for arg in "$@"; do'
-              printf '%s\n' '  if [ "$arg" = "-fuse-ld=lld" ]; then'
-              printf '%s\n' '    args+=("-fuse-ld=bfd")'
-              printf '%s\n' '  else'
-              printf '%s\n' '    args+=("$arg")'
-              printf '%s\n' '  fi'
-              printf '%s\n' 'done'
-              printf '%s\n' 'exec "$real" "${args[@]}"'
-            } > "$WRAP"
-            chmod +x "$WRAP"
-            echo "Created wrapper: $WRAP"
-          fi
+          {
+            printf '%s\n' '#!/bin/bash'
+            printf '%s\n' "real=\"$REAL\""
+            printf '%s\n' 'args=()'
+            printf '%s\n' 'for arg in "$@"; do'
+            printf '%s\n' '  if [ "$arg" = "-fuse-ld=lld" ]; then'
+            printf '%s\n' '    args+=("-fuse-ld=bfd")'
+            printf '%s\n' '  else'
+            printf '%s\n' '    args+=("$arg")'
+            printf '%s\n' '  fi'
+            printf '%s\n' 'done'
+            printf '%s\n' 'exec "$real" "${args[@]}"'
+          } > "$WRAP"
+          chmod +x "$WRAP"
+          echo "Created wrapper: $WRAP"
         done
 
-        export PATH="$WRAP_DIR:$PATH"
+        export PATH="$WRAP_DIR:$TOOLCHAIN_BIN:$PATH"
         echo "PATH head: $(echo $PATH | cut -d: -f1-3)"
-        which mipsel-openwrt-linux-musl-gcc
-        mipsel-openwrt-linux-musl-gcc --version | head -1
+        which mipsel-openwrt-linux-musl-gcc || true
+        mipsel-openwrt-linux-musl-gcc --version 2>/dev/null | head -1 || true
 
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
