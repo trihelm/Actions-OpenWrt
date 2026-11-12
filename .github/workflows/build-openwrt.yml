@@ -80,16 +80,7 @@ jobs:
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-
-    - name: Remove packages xray-core
-      run: |
-        cd openwrt
-        echo "=== before remove ==="
-        find feeds package -maxdepth 4 -type d -name 'xray*' 2>/dev/null || true
-        rm -rf package/feeds/packages/xray-core
-        rm -rf feeds/packages/net/xray-core
-        echo "=== after remove ==="
-        find feeds package -maxdepth 4 -type d -name 'xray*' 2>/dev/null || true
+        
 
     - name: Load custom configuration
       run: |
@@ -110,11 +101,9 @@ jobs:
       id: package
       run: |
         cd openwrt
-        rm -rf feeds/small/luci-app-passwall
-        #rm -rf feeds/small/simple-obfs
+        rm -rf feeds/luci/applications/luci-app-passwall
         unzip -o small.zip
-        mv -f small*/luci-app-passwall feeds/small/
-        #mv -f small*/simple-obfs feeds/small/
+        mv -f small*/luci-app-passwall feeds/luci/applications/
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -125,7 +114,6 @@ jobs:
       shell: bash
       run: |
         cd openwrt
-
         LUCI_C=feeds/luci/libs/rpcd-mod-luci/src/luci.c
         if [ -f "$LUCI_C" ]; then
           echo "=== before patch $LUCI_C ==="
@@ -137,7 +125,6 @@ jobs:
         else
           echo "WARNING: $LUCI_C not found"
         fi
-
         LIBURCU_MK=feeds/packages/libs/liburcu/Makefile
         if [ -f "$LIBURCU_MK" ]; then
           echo "=== before patch $LIBURCU_MK ==="
@@ -155,11 +142,9 @@ jobs:
         else
           echo "WARNING: $LIBURCU_MK not found"
         fi
-
         WRAP_DIR=/workdir/gcc-wrapper
         mkdir -p "$WRAP_DIR"
         TOOLCHAIN_BIN=/workdir/openwrt/staging_dir/toolchain-mipsel_24kc_gcc-8.4.0_musl/bin
-
         for tool in gcc g++; do
           REAL="$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-$tool"
           WRAP="$WRAP_DIR/mipsel-openwrt-linux-musl-$tool"
