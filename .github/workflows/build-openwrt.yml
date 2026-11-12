@@ -134,39 +134,33 @@ jobs:
         if [ -f "$LIBURCU_MK" ]; then
           echo "=== before patch $LIBURCU_MK ==="
           grep -nE 'PKG_BUILD_FLAGS|PKG_USE_MIPS16|TARGET_CFLAGS' "$LIBURCU_MK" || true
-
-          # 1. 追加/写入 PKG_BUILD_FLAGS:=no-mips16
           if grep -q '^PKG_BUILD_FLAGS' "$LIBURCU_MK"; then
-            if ! grep -q 'no-mips16' "$LIBURCU_MK"; then
-              sed -i '/^PKG_BUILD_FLAGS/s/$/ no-mips16/' "$LIBURCU_MK"
-            fi
+            grep -q 'no-mips16' "$LIBURCU_MK" || sed -i '/^PKG_BUILD_FLAGS/s/$/ no-mips16/' "$LIBURCU_MK"
           else
             sed -i '/^PKG_BUILD_PARALLEL/i\PKG_BUILD_FLAGS:=no-mips16' "$LIBURCU_MK"
           fi
-
-          # 2. 兼容旧版写法 PKG_USE_MIPS16:=0
-          if ! grep -q 'PKG_USE_MIPS16' "$LIBURCU_MK"; then
-            sed -i '/^PKG_BUILD_PARALLEL/i\PKG_USE_MIPS16:=0' "$LIBURCU_MK"
-          fi
-
-          # 3. 直接在 TARGET_CFLAGS 里加 -mno-mips16，覆盖前面的 -mips16
-          if ! grep -q 'TARGET_CFLAGS += -mno-mips16' "$LIBURCU_MK"; then
+          grep -q 'PKG_USE_MIPS16' "$LIBURCU_MK" || sed -i '/^PKG_BUILD_PARALLEL/i\PKG_USE_MIPS16:=0' "$LIBURCU_MK"
+          grep -q 'TARGET_CFLAGS += -mno-mips16' "$LIBURCU_MK" || \
             sed -i '/include \$(INCLUDE_DIR)\/package.mk/i\TARGET_CFLAGS += -mno-mips16' "$LIBURCU_MK"
-          fi
-
           echo "=== after patch $LIBURCU_MK ==="
           grep -nE 'PKG_BUILD_FLAGS|PKG_USE_MIPS16|TARGET_CFLAGS' "$LIBURCU_MK" || true
         else
           echo "WARNING: $LIBURCU_MK not found"
         fi
 
-        echo "=== clean rpcd-mod-luci ==="
-        make package/feeds/luci/rpcd-mod-luci/clean || true
-        rm -rf build_dir/target-*/rpcd-mod-luci-*
-
-        echo "=== clean liburcu ==="
-        make package/feeds/packages/liburcu/clean || true
-        rm -rf build_dir/target-*/userspace-rcu-*
+        # --- Patch xray-core: disable CGO to avoid -fuse-ld=lld ---
+        XRAY_MK=feeds/packages/net/xray-core/Makefile
+        if [ -f "$XRAY_MK" ]; then
+          echo "=== patch $XRAY_MK: disable CGO ==="
+          grep -n 'CGO_ENABLED' "$XRAY_MK" || true
+          if ! grep -q '^override CGO_ENABLED' "$XRAY_MK"; then
+            sed -i '/^include \$(TOPDIR)\/rules.mk/a override CGO_ENABLED = 0' "$XRAY_MK"
+          fi
+          echo "=== after patch ==="
+          grep -n 'CGO_ENABLED' "$XRAY_MK" || true
+        else
+          echo "WARNING: $XRAY_MK not found"
+        fi
 
         #cd openwrt
         make -j$(nproc) || make -j1 || make -j1 V=s
@@ -174,16 +168,6 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-
-    - name: Upload build logs on failure
-      if: failure()
-      uses: actions/upload-artifact@main
-      with:
-        name: build-logs
-        path: |
-          /workdir/build.log
-          /workdir/build-detail.log
-        if-no-files-found: ignore
 
     - name: Check space usage
       if: (!cancelled())
