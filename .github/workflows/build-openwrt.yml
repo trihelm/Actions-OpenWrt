@@ -103,6 +103,8 @@ jobs:
         rm -rf feeds/luci/applications/luci-app-passwall
         unzip -o small.zip
         mv -f small*/luci-app-passwall feeds/luci/applications/
+        mv -f small*/shadowsocks-rust feeds/packages/net/
+        mv -f small*/simple-obfs feeds/packages/net/
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
