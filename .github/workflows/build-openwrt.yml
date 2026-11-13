@@ -98,7 +98,7 @@ jobs:
         mv -f small*/ipt2socks feeds/packages/net/
         mv -f small*/hysteria feeds/packages/net/
         mv -f small*/naiveproxy feeds/packages/net/
-        mv -f small*/shadow-tls feeds/packages/net/
+        #mv -f small*/shadow-tls feeds/packages/net/
         mv -f small*/tuic-client feeds/packages/net/
         mv -f small*/v2ray-plugin feeds/packages/net/
         mv -f small*/xray-plugin feeds/packages/net/
