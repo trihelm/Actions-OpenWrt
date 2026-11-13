@@ -79,7 +79,8 @@ jobs:
       run: cd openwrt && ./scripts/feeds update -a
 
     - name: Install feeds
-      run: cd openwrt 
+      run: |
+        cd openwrt 
         rm -rf feeds/luci/applications/luci-app-passwall
         unzip -o small.zip
         mv -f small*/luci-app-passwall feeds/luci/applications/
