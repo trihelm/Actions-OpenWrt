@@ -102,6 +102,7 @@ jobs:
         mv -f small*/tuic-client feeds/packages/net/
         mv -f small*/v2ray-plugin feeds/packages/net/
         mv -f small*/xray-plugin feeds/packages/net/
+        ./scripts/feeds update -i
         ./scripts/feeds install -a
 
     - name: Load custom configuration
@@ -128,7 +129,6 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-        find feeds/packages/net/simple-obfs -maxdepth 2 -name Makefile
 
     - name: Compile the firmware
       id: compile
