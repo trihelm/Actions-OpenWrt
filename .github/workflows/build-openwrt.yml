@@ -80,7 +80,7 @@ jobs:
 
     - name: Install feeds
       run: |
-        cd openwrt 
+        cd openwrt
         rm -rf feeds/luci/applications/luci-app-passwall
         rm -rf feeds/packages/net/shadowsocks-rust
         rm -rf feeds/packages/net/simple-obfs
@@ -104,6 +104,21 @@ jobs:
         mv -f small*/xray-plugin feeds/packages/net/
         ./scripts/feeds update -i
         ./scripts/feeds install -a
+
+        echo "=== patch kmod-fs-cifsd -> kmod-fs-ksmbd ==="
+        grep -rl 'kmod-fs-cifsd' feeds/ 2>/dev/null | while read f; do
+          sed -i 's/kmod-fs-cifsd/kmod-fs-ksmbd/g' "$f"
+          echo "patched $f"
+        done
+
+        echo "=== verify ksmbd-tools ==="
+        grep -n 'kmod-fs-cifsd\|kmod-fs-ksmbd' feeds/packages/net/ksmbd-tools/Makefile 2>/dev/null || true
+
+        echo "=== verify luci-app-ksmbd ==="
+        KSMBD_LUCI=$(find feeds/luci -path '*luci-app-ksmbd/Makefile' 2>/dev/null | head -1)
+        if [ -n "$KSMBD_LUCI" ]; then
+          grep -n 'kmod-fs-cifsd\|kmod-fs-ksmbd' "$KSMBD_LUCI" || true
+        fi
 
     - name: Load custom configuration
       run: |
