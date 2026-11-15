@@ -140,18 +140,13 @@ jobs:
       run: |
         cd openwrt
 
-        # --- rpcd-mod-luci patch: IWINFO_80211_COUNT -> IWINFO_80211_N ---
-        LUCI_C=feeds/luci/libs/rpcd-mod-luci/src/luci.c
-        if [ -f "$LUCI_C" ]; then
-          echo "=== before patch $LUCI_C ==="
-          grep -n 'IWINFO_80211_COUNT\|sizeof(iw_80211names)' "$LUCI_C" || true
-          sed -i 's/IWINFO_80211_COUNT/IWINFO_80211_N/g' "$LUCI_C"
-          sed -i 's/(sizeof(iw_80211names)\/sizeof(iw_80211names\[0\]))/IWINFO_80211_N/g' "$LUCI_C"
-          echo "=== after patch $LUCI_C ==="
-          grep -n 'IWINFO_80211_N\|IWINFO_80211_COUNT\|sizeof(iw_80211names)' "$LUCI_C" || true
-        else
-          echo "WARNING: $LUCI_C not found"
-        fi
+        # --- rpcd-mod-luci patch: CMake 3.31 -> 3.30 ---
+        echo "=== patch rpcd-mod-luci CMakeLists.txt ==="
+        find feeds/luci/libs/rpcd-mod-luci -name CMakeLists.txt -exec grep -H 'cmake_minimum_required' {} \; || true
+        find feeds/luci/libs/rpcd-mod-luci -name CMakeLists.txt \
+          -exec sed -i 's/cmake_minimum_required(VERSION 3\.31)/cmake_minimum_required(VERSION 3.30)/g' {} \; || true
+        echo "=== after ==="
+        find feeds/luci/libs/rpcd-mod-luci -name CMakeLists.txt -exec grep -H 'cmake_minimum_required' {} \; || true
 
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
