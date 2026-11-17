@@ -72,7 +72,7 @@ jobs:
 
         mv mt7621_nokia-sbell_a040wq.dts openwrt/target/linux/ramips/dts/ || true
         mv -f mt7621.mk openwrt/target/linux/ramips/image/mt7621.mk || true
-        mv -f small.zip openwrt/ || true
+        mv -f small2.zip openwrt/ || true
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
@@ -95,7 +95,7 @@ jobs:
         rm -rf feeds/packages/net/tuic-client
         rm -rf feeds/packages/net/v2ray-plugin
         rm -rf feeds/packages/net/xray-plugin
-        unzip -o small.zip
+        unzip -o small2.zip
         mv -f small*/luci-app-passwall feeds/luci/applications/
         mv -f small*/shadowsocks-rust feeds/packages/net/
         mv -f small*/simple-obfs feeds/packages/net/
