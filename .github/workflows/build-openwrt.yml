@@ -20,10 +20,10 @@ on:
         default: 'false'
 
 env:
-  REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: master
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: 20251001
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: 8820im.config
+  CONFIG_FILE: 8820.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
@@ -46,9 +46,8 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install libfuse-dev
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get update
+        sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz genisoimage msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
@@ -66,11 +65,19 @@ jobs:
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
+        
+        echo "=== kernel config files ==="
+        ls -la openwrt/target/linux/ramips/mt7621/config-* 2>/dev/null || true
+        grep -n 'KERNEL_PATCHVER\|KERNEL_TESTING_PATCHVER' openwrt/target/linux/ramips/mt7621/Makefile 2>/dev/null || true
+        
         mv -f small.zip openwrt/
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cd openwrt
         #$GITHUB_WORKSPACE/$DIY_P1_SH
+
+        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
+        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
         
     - name: Update feeds
       run: |
@@ -83,7 +90,46 @@ jobs:
         rm -rf feeds/small/xray-core
         
     - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
+      run: |
+        cd openwrt
+        rm -rf feeds/luci/applications/luci-app-passwall
+        rm -rf feeds/packages/net/shadowsocks-rust
+        rm -rf feeds/packages/net/simple-obfs
+        rm -rf feeds/packages/net/ipt2socks
+        rm -rf feeds/packages/net/hysteria
+        rm -rf feeds/packages/net/naiveproxy
+        rm -rf feeds/packages/net/shadow-tls
+        rm -rf feeds/packages/net/tuic-client
+        rm -rf feeds/packages/net/v2ray-plugin
+        rm -rf feeds/packages/net/xray-plugin
+        unzip -o small2.zip
+        mv -f small*/luci-app-passwall feeds/luci/applications/
+        mv -f small*/shadowsocks-rust feeds/packages/net/
+        mv -f small*/simple-obfs feeds/packages/net/
+        mv -f small*/ipt2socks feeds/packages/net/
+        mv -f small*/hysteria feeds/packages/net/
+        mv -f small*/naiveproxy feeds/packages/net/
+        #mv -f small*/shadow-tls feeds/packages/net/
+        mv -f small*/tuic-client feeds/packages/net/
+        mv -f small*/v2ray-plugin feeds/packages/net/
+        mv -f small*/xray-plugin feeds/packages/net/
+        ./scripts/feeds update -i
+        ./scripts/feeds install -a
+
+        echo "=== patch kmod-fs-cifsd -> kmod-fs-ksmbd ==="
+        grep -rl 'kmod-fs-cifsd' feeds/ 2>/dev/null | while read f; do
+          sed -i 's/kmod-fs-cifsd/kmod-fs-ksmbd/g' "$f"
+          echo "patched $f"
+        done
+
+        echo "=== verify ksmbd-tools ==="
+        grep -n 'kmod-fs-cifsd\|kmod-fs-ksmbd' feeds/packages/net/ksmbd-tools/Makefile 2>/dev/null || true
+
+        echo "=== verify luci-app-ksmbd ==="
+        KSMBD_LUCI=$(find feeds/luci -path '*luci-app-ksmbd/Makefile' 2>/dev/null | head -1)
+        if [ -n "$KSMBD_LUCI" ]; then
+          grep -n 'kmod-fs-cifsd\|kmod-fs-ksmbd' "$KSMBD_LUCI" || true
+        fi
        
 
     - name: Load custom configuration
@@ -105,11 +151,7 @@ jobs:
       id: package
       run: |
         cd openwrt
-        #rm -rf feeds/small/luci-app-bypass
-        #rm -rf feeds/small/luci-app-ssr-plus
-        #rm -rf feeds/small/luci-app-passwall
-        #unzip luci-app-passwall.zip
-        #mv -f luci-app-passwall feeds/small/
+
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -119,13 +161,54 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
-        #make -j1 V=s
+
+        # --- patch all feeds CMakeLists.txt: 3.31+ -> 3.30 ---
+        echo "=== before: cmake_minimum_required in feeds ==="
+        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
+
+        find feeds -name CMakeLists.txt -type f -exec \
+          sed -i -E 's/cmake_minimum_required\(VERSION 3\.(3[1-9]|[4-9][0-9])(\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.30)/g' {} \; || true
+
+        echo "=== after: cmake_minimum_required in feeds ==="
+        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
+
+        # --- xray-core patch: disable Cronet + CGO ---
+        XRAY_MK=feeds/packages/net/xray-core/Makefile
+        if [ -f "$XRAY_MK" ]; then
+          echo "=== before patch $XRAY_MK ==="
+          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
+          sed -i 's/with_cronet//g' "$XRAY_MK"
+          sed -i 's/cronet//g' "$XRAY_MK"
+          sed -i '/CGO_ENABLED/d' "$XRAY_MK"
+          printf '\noverride CGO_ENABLED = 0\n' >> "$XRAY_MK"
+          sed -i 's/-fuse-ld=lld//g' "$XRAY_MK"
+          echo "=== after patch $XRAY_MK ==="
+          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
+        else
+          echo "WARNING: $XRAY_MK not found"
+        fi
+
+        # --- force CGO_ENABLED=0 globally ---
+        export CGO_ENABLED=0
+
+        # --- binary patch Go linker: -fuse-ld=lld -> -fuse-ld=bfd ---
+        echo "=== patch Go linker binaries ==="
+        for linker in $(find staging_dir/hostpkg staging_dir/host -path '*/pkg/tool/*/link' -type f 2>/dev/null); do
+          if grep -q -- '-fuse-ld=lld' "$linker" 2>/dev/null; then
+            echo "patching $linker"
+            chmod +w "$linker" 2>/dev/null || true
+            sed -i 's/-fuse-ld=lld/-fuse-ld=bfd/g' "$linker" 2>/dev/null || \
+              perl -pi -e 's/-fuse-ld=lld/-fuse-ld=bfd/g' "$linker" 2>/dev/null || true
+          fi
+        done
+        echo "=== done ==="
+
         make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "::set-output name=status::success"
+        echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        
 
     - name: Check space usage
       if: (!cancelled())
