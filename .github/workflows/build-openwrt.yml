@@ -89,6 +89,10 @@ jobs:
         
     - name: Install feeds
       run: |
+        SRC_DIR="$GITHUB_WORKSPACE/patch"
+        mv "$SRC_DIR"/610-*.patch openwrt/target/linux/generic/backport-5.10/
+        mv "$SRC_DIR"/650-*.patch openwrt/target/linux/generic/hack-5.10/
+        mv "$SRC_DIR"/704-*.patch openwrt/target/linux/generic/pending-5.10/
         cd openwrt
         rm -rf feeds/luci/applications/luci-app-passwall
         rm -rf feeds/packages/net/shadowsocks-rust
