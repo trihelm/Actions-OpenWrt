@@ -64,20 +64,18 @@ jobs:
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        
+        mv -f small.zip openwrt/
         chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
         
         echo "=== kernel config files ==="
         ls -la openwrt/target/linux/ramips/mt7621/config-* 2>/dev/null || true
         grep -n 'KERNEL_PATCHVER\|KERNEL_TESTING_PATCHVER' openwrt/target/linux/ramips/mt7621/Makefile 2>/dev/null || true
         
-        mv -f small.zip openwrt/
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
 
-
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
         sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
         sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
         
