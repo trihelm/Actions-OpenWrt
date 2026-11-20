@@ -65,6 +65,7 @@ jobs:
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
+        $GITHUB_WORKSPACE/$DIY_P1_SH
         
         echo "=== kernel config files ==="
         ls -la openwrt/target/linux/ramips/mt7621/config-* 2>/dev/null || true
@@ -73,8 +74,7 @@ jobs:
         mv -f small.zip openwrt/
         #rm -rf openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
         #mv -f mt7621_zte_e8820s.dts openwrt/target/linux/ramips/dts/mt7621_zte_e8820s.dts
-        cd openwrt
-        #$GITHUB_WORKSPACE/$DIY_P1_SH
+
 
         sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
         sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
@@ -133,7 +133,6 @@ jobs:
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P2_SH
-        cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
     - name: SSH connection to Actions
@@ -167,37 +166,6 @@ jobs:
 
         echo "=== after: cmake_minimum_required in feeds ==="
         grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
-
-        # --- xray-core patch: disable Cronet + CGO ---
-        XRAY_MK=feeds/packages/net/xray-core/Makefile
-        if [ -f "$XRAY_MK" ]; then
-          echo "=== before patch $XRAY_MK ==="
-          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
-          sed -i 's/with_cronet//g' "$XRAY_MK"
-          sed -i 's/cronet//g' "$XRAY_MK"
-          sed -i '/CGO_ENABLED/d' "$XRAY_MK"
-          printf '\noverride CGO_ENABLED = 0\n' >> "$XRAY_MK"
-          sed -i 's/-fuse-ld=lld//g' "$XRAY_MK"
-          echo "=== after patch $XRAY_MK ==="
-          grep -nE 'CGO_ENABLED|GO_PKG_TAGS|GO_EXTLDFLAGS|cronet|fuse-ld' "$XRAY_MK" || true
-        else
-          echo "WARNING: $XRAY_MK not found"
-        fi
-
-        # --- force CGO_ENABLED=0 globally ---
-        export CGO_ENABLED=0
-
-        # --- binary patch Go linker: -fuse-ld=lld -> -fuse-ld=bfd ---
-        echo "=== patch Go linker binaries ==="
-        for linker in $(find staging_dir/hostpkg staging_dir/host -path '*/pkg/tool/*/link' -type f 2>/dev/null); do
-          if grep -q -- '-fuse-ld=lld' "$linker" 2>/dev/null; then
-            echo "patching $linker"
-            chmod +w "$linker" 2>/dev/null || true
-            sed -i 's/-fuse-ld=lld/-fuse-ld=bfd/g' "$linker" 2>/dev/null || \
-              perl -pi -e 's/-fuse-ld=lld/-fuse-ld=bfd/g' "$linker" 2>/dev/null || true
-          fi
-        done
-        echo "=== done ==="
 
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
