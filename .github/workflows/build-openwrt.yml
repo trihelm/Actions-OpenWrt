@@ -61,6 +61,22 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Update tools/cmake to latest master
+      working-directory: /workdir
+      run: |
+        echo "=== Cloning latest master tools/cmake ==="
+        git clone --depth=1 --filter=blob:none --sparse -b master https://github.com/coolsnowwolf/lede lede-tools
+        cd lede-tools
+        git sparse-checkout set tools/cmake
+        cd ..
+        
+        echo "=== Replacing old cmake ==="
+        rm -rf openwrt/tools/cmake
+        cp -a lede-tools/tools/cmake openwrt/tools/cmake
+        
+        echo "=== Verify new cmake version ==="
+        grep '^PKG_VERSION' openwrt/tools/cmake/Makefile
+
     - name: Load custom feeds
       run: |
         [ -f "${FEEDS_CONF:-}" ] && mv "$FEEDS_CONF" openwrt/feeds.conf.default || true
@@ -138,8 +154,6 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH        
 
-
-
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
@@ -163,16 +177,7 @@ jobs:
       run: |
         cd openwrt
 
-        # --- patch all feeds CMakeLists.txt: 3.31+ -> 3.30 ---
-        echo "=== before: cmake_minimum_required in feeds ==="
-        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
-
-        find feeds -name CMakeLists.txt -type f -exec \
-          sed -i -E 's/cmake_minimum_required\(VERSION 3\.(3[1-9]|[4-9][0-9])(\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.30)/g' {} \; || true
-
-        echo "=== after: cmake_minimum_required in feeds ==="
-        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
-
+        # 降级补丁已移除，直接编译
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
