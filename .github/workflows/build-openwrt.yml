@@ -64,7 +64,7 @@ jobs:
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        mv -f small.zip openwrt/
+        mv -f small2.zip openwrt/
         chmod +x $DIY_P1_SH
         
         echo "=== kernel config files ==="
@@ -76,8 +76,8 @@ jobs:
 
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
-        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
-        sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
+        #sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto' package/network/services/hostapd/Makefile
+        #sed -i '/TARGET_LDFLAGS += -lubox -lubus/i\TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin' package/network/services/hostapd/Makefile
         
     - name: Update feeds
       run: |
@@ -102,7 +102,7 @@ jobs:
         rm -rf feeds/packages/net/tuic-client
         rm -rf feeds/packages/net/v2ray-plugin
         rm -rf feeds/packages/net/xray-plugin
-        unzip -o small.zip
+        unzip -o small2.zip
         mv -f small*/luci-app-passwall feeds/luci/applications/
         mv -f small*/shadowsocks-rust feeds/packages/net/
         mv -f small*/simple-obfs feeds/packages/net/
@@ -161,17 +161,6 @@ jobs:
       id: compile
       run: |
         cd openwrt
-
-        # --- patch all feeds CMakeLists.txt: 3.31+ -> 3.30 ---
-        echo "=== before: cmake_minimum_required in feeds ==="
-        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
-
-        find feeds -name CMakeLists.txt -type f -exec \
-          sed -i -E 's/cmake_minimum_required\(VERSION 3\.(3[1-9]|[4-9][0-9])(\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.30)/g' {} \; || true
-
-        echo "=== after: cmake_minimum_required in feeds ==="
-        grep -rn 'cmake_minimum_required' feeds/ --include=CMakeLists.txt 2>/dev/null | grep -E '3\.(3[1-9]|[4-9][0-9])' || true
-
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
