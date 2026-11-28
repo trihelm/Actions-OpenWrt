@@ -118,6 +118,7 @@ jobs:
         rm -rf feeds/packages/net/tuic-client
         rm -rf feeds/packages/net/v2ray-plugin
         rm -rf feeds/packages/net/xray-plugin
+        rm -rf feeds/packages/net/xray-core
         unzip -o small2.zip
         mv -f small*/luci-app-passwall feeds/luci/applications/
         mv -f small*/shadowsocks-rust feeds/packages/net/
@@ -129,6 +130,7 @@ jobs:
         mv -f small*/tuic-client feeds/packages/net/
         mv -f small*/v2ray-plugin feeds/packages/net/
         mv -f small*/xray-plugin feeds/packages/net/
+        mv -f small*/xray-core feeds/packages/net/
         ./scripts/feeds update -i
         ./scripts/feeds install -a
 
